@@ -1,0 +1,1 @@
+Extract project descriptions from this portfolio or GitHub profile content. Return 2-4 project summaries as plain text, each 2-3 sentences. For each project mention: project name, technologies used, and what it does or its impact. Separate projects with blank lines.

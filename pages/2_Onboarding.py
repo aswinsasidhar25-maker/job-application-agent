@@ -29,7 +29,7 @@ try:
     uploaded_file = st.file_uploader(
         "Upload your CV (PDF, DOCX, or TXT)",
         type=["pdf", "docx", "doc", "txt"],
-        help="Your CV will be parsed locally - no LLM call for text extraction."
+        help="Your CV will be parsed locally and personal details will be auto-filled."
     )
 
     cv_data = None
@@ -40,12 +40,18 @@ try:
             raw_cv_path = save_cv_file(file_bytes, uploaded_file.name)
             cv_data = process_cv(db, raw_cv_path)
 
-        st.success("CV parsed successfully!")
+        st.success("CV parsed successfully! Personal details have been auto-filled below.")
         with st.expander("Extracted Skills", expanded=True):
             skills = cv_data.get("skills", [])
             st.write(", ".join(skills) if skills else "No skills detected")
         with st.expander("CV Preview", expanded=False):
             st.text(cv_data["parsed_cv_text"][:2000])
+
+        # Store extracted contact details in session state for auto-fill
+        st.session_state["cv_name"] = cv_data.get("name", "")
+        st.session_state["cv_email"] = cv_data.get("email", "")
+        st.session_state["cv_phone"] = cv_data.get("phone", "")
+        st.session_state["cv_location"] = cv_data.get("location", "")
     elif existing and existing.parsed_cv_text:
         cv_data = {
             "parsed_cv_text": existing.parsed_cv_text,
@@ -54,22 +60,31 @@ try:
         }
         raw_cv_path = existing.raw_cv_path
 
+    # Determine default values: CV-extracted > existing profile > empty
+    def _default(field: str) -> str:
+        cv_val = st.session_state.get(f"cv_{field}", "")
+        if cv_val:
+            return cv_val
+        if existing:
+            return getattr(existing, field, "") or ""
+        return ""
+
     st.markdown("---")
 
     # Step 2: Personal Details
     st.subheader("Step 2: Your Details")
     col1, col2 = st.columns(2)
     with col1:
-        name = st.text_input("Full Name", value=existing.name if existing else "")
-        email = st.text_input("Email", value=existing.email if existing else "")
-        phone = st.text_input("Phone", value=existing.phone if existing else "")
+        name = st.text_input("Full Name", value=_default("name"))
+        email = st.text_input("Email", value=_default("email"))
+        phone = st.text_input("Phone", value=_default("phone"))
     with col2:
-        location = st.text_input("Current Location", value=existing.location if existing else "")
+        location = st.text_input("Current Location", value=_default("location"))
         min_salary = st.number_input(
-            "Minimum Salary (USD/year)",
+            "Minimum Expected Salary (INR/year)",
             min_value=0,
             value=int(existing.min_salary or 0) if existing else 0,
-            step=5000,
+            step=50000,
         )
 
     st.markdown("---")
@@ -90,7 +105,7 @@ try:
     locations_text = st.text_area(
         "Preferred locations (one per line, leave empty for any)",
         value="\n".join(existing.preferred_locations or []) if existing else "",
-        placeholder="San Francisco, CA\nNew York, NY\nRemote",
+        placeholder="Bangalore\nHyderabad\nRemote",
     )
     remote_pref = st.selectbox(
         "Remote preference",
@@ -102,11 +117,37 @@ try:
 
     st.markdown("---")
 
-    # Step 5: Projects
-    st.subheader("Step 5: Tell us about your key projects")
+    # Step 5: Projects & Portfolio
+    st.subheader("Step 5: Projects & Portfolio")
+
+    portfolio_url = st.text_input(
+        "Portfolio URL (GitHub profile, personal website, etc.)",
+        value=(existing.portfolio_url if existing and hasattr(existing, 'portfolio_url') else ""),
+        placeholder="https://github.com/username",
+    )
+
+    if portfolio_url and st.button("Fetch & Fill Projects from Portfolio"):
+        with st.spinner("Fetching portfolio..."):
+            try:
+                from services.portfolio_parser import fetch_portfolio, summarize_portfolio
+                raw_content = fetch_portfolio(portfolio_url)
+                if raw_content:
+                    summary = summarize_portfolio(db, raw_content)
+                    st.session_state["portfolio_projects"] = summary
+                    st.success("Portfolio fetched! Projects have been filled below.")
+                else:
+                    st.warning("Could not extract content from the provided URL.")
+            except Exception as e:
+                st.error(f"Failed to fetch portfolio: {e}")
+
+    # Use portfolio-fetched projects if available
+    default_projects = st.session_state.get("portfolio_projects", "")
+    if not default_projects:
+        default_projects = existing.projects_summary if existing else ""
+
     projects = st.text_area(
         "Describe 2-3 of your most impactful projects",
-        value=existing.projects_summary if existing else "",
+        value=default_projects,
         placeholder="Built a real-time data pipeline processing 1M events/day...\nLed a team of 5 to redesign the checkout flow, improving conversion by 15%...",
         height=150,
     )
@@ -132,6 +173,7 @@ try:
                 projects_summary=projects,
                 cv_data=cv_data,
                 raw_cv_path=raw_cv_path,
+                portfolio_url=portfolio_url,
             )
 
         st.success("Profile saved! Head to Job Search to find matching positions.")

@@ -29,9 +29,9 @@ try:
                     if job.salary_min or job.salary_max:
                         salary = ""
                         if job.salary_min:
-                            salary += f"${job.salary_min:,.0f}"
+                            salary += f"₹{job.salary_min:,.0f}"
                         if job.salary_max:
-                            salary += f" - ${job.salary_max:,.0f}"
+                            salary += f" - ₹{job.salary_max:,.0f}"
                         st.markdown(f"**Salary:** {salary}")
                     if job.description_summary:
                         st.markdown(job.description_summary)

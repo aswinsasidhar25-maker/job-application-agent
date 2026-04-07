@@ -18,6 +18,7 @@ class UserProfile(Base):
     experience_summary = Column(Text, default="")
     projects_summary = Column(Text, default="")
     skills = Column(JSON, default=list)
+    portfolio_url = Column(String(500), default="")
     raw_cv_path = Column(String(500), default="")
     parsed_cv_text = Column(Text, default="")
     structured_cv = Column(JSON, default=dict)

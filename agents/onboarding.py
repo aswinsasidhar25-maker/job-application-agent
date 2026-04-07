@@ -56,6 +56,10 @@ def process_cv(db: Session, file_path: str) -> dict:
         "sections": sections,
         "structured_cv": structured,
         "skills": all_skills,
+        "name": structured.get("name", ""),
+        "email": structured.get("email", ""),
+        "phone": structured.get("phone", ""),
+        "location": structured.get("location", ""),
     }
 
 
@@ -72,6 +76,7 @@ def save_profile(
     projects_summary: str = "",
     cv_data: dict | None = None,
     raw_cv_path: str = "",
+    portfolio_url: str = "",
 ) -> UserProfile:
     """Save or update user profile."""
     profile = db.query(UserProfile).first()
@@ -89,6 +94,7 @@ def save_profile(
     profile.min_salary = min_salary if min_salary is not None else profile.min_salary
     profile.projects_summary = projects_summary or profile.projects_summary
     profile.raw_cv_path = raw_cv_path or profile.raw_cv_path
+    profile.portfolio_url = portfolio_url or profile.portfolio_url
 
     if cv_data:
         profile.parsed_cv_text = cv_data.get("parsed_cv_text", profile.parsed_cv_text)
