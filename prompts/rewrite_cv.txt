@@ -1,0 +1,6 @@
+Rewrite this CV to maximize relevance for the target job. Rules:
+- Reorder and emphasize relevant experience
+- Mirror keywords from job requirements
+- Keep same length as original
+- Do not fabricate experience
+- Output in clean markdown format

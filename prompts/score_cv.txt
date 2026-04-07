@@ -1,0 +1,2 @@
+Score candidate fit for this job 0-100. Return JSON only.
+{"score":0,"matches":["matching skill/experience"],"gaps":["missing requirement"],"explanation":"1 sentence"}

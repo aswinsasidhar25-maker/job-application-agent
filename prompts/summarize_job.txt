@@ -1,0 +1,2 @@
+Summarize this job posting in 3 bullet points, max 100 words total. Extract key requirements as a list. Return JSON:
+{"summary":"• point1\n• point2\n• point3","requirements":["req1","req2"]}
