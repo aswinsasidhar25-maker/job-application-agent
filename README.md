@@ -107,6 +107,7 @@ All configuration is managed via environment variables in a `.env` file. Copy `.
 |---|---|---|
 | `OPENAI_API_KEY` | OpenAI API key for GPT models | One of these |
 | `ANTHROPIC_API_KEY` | Anthropic API key for Claude models | One of these |
+| `GEMINI_API_KEY` | Google Gemini API key | One of these |
 
 ### Job Search Sources
 
@@ -142,6 +143,14 @@ To use Claude models instead:
 ANTHROPIC_API_KEY=sk-ant-...
 MINI_MODEL=claude-haiku-4-5-20251001
 FULL_MODEL=claude-sonnet-4-20250514
+```
+
+To use Gemini models:
+
+```env
+GEMINI_API_KEY=AI...
+MINI_MODEL=gemini/gemini-2.0-flash
+FULL_MODEL=gemini/gemini-2.5-pro-preview-05-06
 ```
 
 ---
@@ -343,6 +352,7 @@ Any model supported by [litellm](https://docs.litellm.ai/docs/providers) works. 
 |---|---|---|
 | OpenAI | `gpt-4o-mini` | `gpt-4o` |
 | Anthropic | `claude-haiku-4-5-20251001` | `claude-sonnet-4-20250514` |
+| Google Gemini | `gemini/gemini-2.0-flash` | `gemini/gemini-2.5-pro-preview-05-06` |
 | Local (Ollama) | `ollama/llama3` | `ollama/llama3:70b` |
 
 ---
