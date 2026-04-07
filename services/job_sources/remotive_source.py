@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import httpx
 from services.job_sources.base import JobSource, JobResult
 

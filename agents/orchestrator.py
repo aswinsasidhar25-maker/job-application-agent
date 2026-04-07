@@ -1,5 +1,6 @@
 """Pure Python orchestrator. NO LLM calls here - just dispatch logic.
 This is the biggest token saver vs an autonomous agent loop."""
+from __future__ import annotations
 
 from sqlalchemy.orm import Session
 from models.user import UserProfile

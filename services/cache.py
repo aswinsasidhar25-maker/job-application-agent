@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import hashlib
 from datetime import datetime, timezone, timedelta
 from sqlalchemy.orm import Session

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import re
 import httpx
 from bs4 import BeautifulSoup
