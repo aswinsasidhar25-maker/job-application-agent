@@ -36,22 +36,27 @@ try:
     raw_cv_path = ""
     if uploaded_file:
         with st.spinner("Parsing CV..."):
-            file_bytes = uploaded_file.read()
-            raw_cv_path = save_cv_file(file_bytes, uploaded_file.name)
-            cv_data = process_cv(db, raw_cv_path)
+            try:
+                file_bytes = uploaded_file.read()
+                raw_cv_path = save_cv_file(file_bytes, uploaded_file.name)
+                cv_data = process_cv(db, raw_cv_path)
+            except Exception as e:
+                st.error(f"Failed to parse CV: {e}")
+                cv_data = None
 
-        st.success("CV parsed successfully! Personal details have been auto-filled below.")
-        with st.expander("Extracted Skills", expanded=True):
-            skills = cv_data.get("skills", [])
-            st.write(", ".join(skills) if skills else "No skills detected")
-        with st.expander("CV Preview", expanded=False):
-            st.text(cv_data["parsed_cv_text"][:2000])
+        if cv_data:
+            st.success("CV parsed successfully! Personal details have been auto-filled below.")
+            with st.expander("Extracted Skills", expanded=True):
+                skills = cv_data.get("skills", [])
+                st.write(", ".join(skills) if skills else "No skills detected")
+            with st.expander("CV Preview", expanded=False):
+                st.text(cv_data["parsed_cv_text"][:2000])
 
-        # Store extracted contact details in session state for auto-fill
-        st.session_state["cv_name"] = cv_data.get("name", "")
-        st.session_state["cv_email"] = cv_data.get("email", "")
-        st.session_state["cv_phone"] = cv_data.get("phone", "")
-        st.session_state["cv_location"] = cv_data.get("location", "")
+            # Store extracted contact details in session state for auto-fill
+            st.session_state["cv_name"] = cv_data.get("name", "")
+            st.session_state["cv_email"] = cv_data.get("email", "")
+            st.session_state["cv_phone"] = cv_data.get("phone", "")
+            st.session_state["cv_location"] = cv_data.get("location", "")
     elif existing and existing.parsed_cv_text:
         cv_data = {
             "parsed_cv_text": existing.parsed_cv_text,

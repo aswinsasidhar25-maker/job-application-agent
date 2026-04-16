@@ -41,7 +41,7 @@ def _is_duplicate(new_job: JobResult, existing_jobs: list[Job]) -> bool:
         company_score = fuzz.ratio(new_job.company.lower(), existing.company.lower())
         if title_score > 85 and company_score > 80:
             return True
-    return existing_jobs and any(
+    return bool(existing_jobs) and any(
         new_job.external_id and new_job.external_id == e.external_id
         for e in existing_jobs
     )

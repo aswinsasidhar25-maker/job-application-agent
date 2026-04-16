@@ -28,17 +28,24 @@ def _fetch_github_repos(username: str) -> str:
     params = {"sort": "updated", "per_page": 10, "type": "owner"}
     headers = {"Accept": "application/vnd.github.v3+json"}
 
-    with httpx.Client(timeout=15) as client:
-        resp = client.get(api_url, params=params, headers=headers)
-        if resp.status_code != 200:
-            return ""
+    try:
+        with httpx.Client(timeout=15) as client:
+            resp = client.get(api_url, params=params, headers=headers)
+            if resp.status_code != 200:
+                return ""
+            repos = resp.json()
+    except httpx.RequestError:
+        return ""
 
-    repos = resp.json()
     if not repos:
         return ""
 
-    # Sort by stars (descending), then by recently updated
-    repos = sorted(repos, key=lambda r: (r.get("stargazers_count", 0), r.get("updated_at", "")), reverse=True)
+    # Sort by stars then by recently updated; guard against null updated_at
+    repos = sorted(
+        repos,
+        key=lambda r: (r.get("stargazers_count", 0), r.get("updated_at") or ""),
+        reverse=True,
+    )
 
     lines = []
     for repo in repos[:6]:
@@ -57,12 +64,16 @@ def _fetch_webpage(url: str) -> str:
         "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36"
     }
 
-    with httpx.Client(timeout=15, follow_redirects=True) as client:
-        resp = client.get(url, headers=headers)
-        if resp.status_code != 200:
-            return ""
+    try:
+        with httpx.Client(timeout=15, follow_redirects=True) as client:
+            resp = client.get(url, headers=headers)
+            if resp.status_code != 200:
+                return ""
+            page_text = resp.text
+    except httpx.RequestError:
+        return ""
 
-    soup = BeautifulSoup(resp.text, "html.parser")
+    soup = BeautifulSoup(page_text, "html.parser")
 
     # Remove script and style elements
     for tag in soup(["script", "style", "nav", "footer", "header"]):

@@ -44,7 +44,10 @@ try:
         job_options = {f"{j.title} at {j.company} (ID: {j.id})": j.id for j in all_jobs}
         selected_job_label = st.selectbox("Select a job to score against", list(job_options.keys()))
         selected_job_id = job_options[selected_job_label]
-        selected_job = next(j for j in all_jobs if j.id == selected_job_id)
+        selected_job = next((j for j in all_jobs if j.id == selected_job_id), None)
+        if not selected_job:
+            st.error("Selected job not found. Please refresh the page.")
+            st.stop()
 
         score_col, rewrite_col = st.columns(2)
 

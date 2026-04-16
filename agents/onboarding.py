@@ -94,7 +94,7 @@ def save_profile(
     profile.min_salary = min_salary if min_salary is not None else profile.min_salary
     profile.projects_summary = projects_summary or profile.projects_summary
     profile.raw_cv_path = raw_cv_path or profile.raw_cv_path
-    profile.portfolio_url = portfolio_url or profile.portfolio_url
+    profile.portfolio_url = portfolio_url
 
     if cv_data:
         profile.parsed_cv_text = cv_data.get("parsed_cv_text", profile.parsed_cv_text)

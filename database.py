@@ -31,9 +31,8 @@ def init_db():
 
     # Add portfolio_url column to existing databases
     from sqlalchemy import text
-    with engine.connect() as conn:
-        try:
+    try:
+        with engine.begin() as conn:
             conn.execute(text("ALTER TABLE user_profiles ADD COLUMN portfolio_url VARCHAR(500) DEFAULT ''"))
-            conn.commit()
-        except Exception:
-            pass  # Column already exists
+    except Exception:
+        pass  # Column already exists
