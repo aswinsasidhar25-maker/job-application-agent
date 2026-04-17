@@ -32,16 +32,18 @@ try:
             placeholder="e.g., Remote, Bangalore",
         )
 
-    # JobSpy site selection
-    available_sites = ["indeed", "linkedin", "glassdoor", "zip_recruiter", "google"]
-    selected_sites = st.multiselect(
-        "Job boards to search",
-        available_sites,
-        default=["indeed", "linkedin", "glassdoor"],
-        help="Select which job boards to scrape",
-    )
-
-    results_wanted = st.slider("Results per site", min_value=5, max_value=25, value=10)
+    # JobSpy configuration
+    config_col1, config_col2 = st.columns(2)
+    with config_col1:
+        available_sites = ["indeed", "linkedin", "glassdoor", "zip_recruiter", "google"]
+        selected_sites = st.multiselect(
+            "Job boards to search",
+            available_sites,
+            default=["indeed", "linkedin", "glassdoor"],
+            help="Select which job boards to scrape",
+        )
+    with config_col2:
+        results_wanted = st.slider("Results per site", min_value=5, max_value=25, value=10)
 
     col_search, col_score = st.columns(2)
 
@@ -57,6 +59,7 @@ try:
                     )
                 if new_jobs:
                     st.success(f"Found {len(new_jobs)} new jobs!")
+                    st.rerun()
                 else:
                     st.info("No new jobs found. Try different search terms or job boards.")
 
@@ -74,40 +77,15 @@ try:
 
     st.markdown("---")
 
-    # Running Sheet Export
-    st.subheader("Running Sheet")
-    running_sheet = load_running_sheet()
-    if running_sheet is not None and not running_sheet.empty:
-        col_dl, col_info = st.columns([1, 3])
-        with col_dl:
-            csv_data = running_sheet.to_csv(index=False)
-            st.download_button(
-                label="Download CSV",
-                data=csv_data,
-                file_name="jobs_running_sheet.csv",
-                mime="text/csv",
-                use_container_width=True,
-            )
-        with col_info:
-            st.caption(f"{len(running_sheet)} total jobs tracked across all searches")
-
-        with st.expander("Preview Running Sheet"):
-            display_cols = [c for c in ["title", "company", "location", "source", "match_score", "status", "date_posted"] if c in running_sheet.columns]
-            st.dataframe(running_sheet[display_cols].tail(200), use_container_width=True)
-    else:
-        st.caption("No running sheet yet. Run a search to start tracking jobs.")
-
-    st.markdown("---")
-
-    # Filters
+    # Results - show all jobs from DB
     st.subheader("Results")
     filter_col1, filter_col2, filter_col3 = st.columns(3)
     with filter_col1:
         status_filter = st.selectbox("Status", ["all", "new", "saved", "applied", "dismissed"])
     with filter_col2:
-        min_score = st.slider("Minimum Score", 0, 100, 0)
+        sort_by = st.selectbox("Sort by", ["Newest", "Score (High)", "Score (Low)"])
     with filter_col3:
-        sort_by = st.selectbox("Sort by", ["Score (High)", "Score (Low)", "Newest"])
+        min_score = st.slider("Minimum Score", 0, 100, 0)
 
     # Get filtered jobs
     jobs = get_jobs(db, status=status_filter if status_filter != "all" else None,
@@ -142,6 +120,8 @@ try:
                         salary += f" - ₹{job.salary_max:,.0f}"
                     st.markdown(f"**Salary:** {salary}")
                 st.markdown(f"**Source:** {job.source}")
+                if job.posted_date:
+                    st.markdown(f"**Posted:** {job.posted_date}")
 
                 if job.description_summary:
                     st.markdown("**Summary:**")
@@ -176,6 +156,31 @@ try:
                     if st.button("Dismiss", key=f"dismiss_{job.id}"):
                         update_job_status(db, job.id, "dismissed")
                         st.rerun()
+
+    st.markdown("---")
+
+    # Running Sheet Export
+    st.subheader("Running Sheet")
+    running_sheet = load_running_sheet()
+    if running_sheet is not None and not running_sheet.empty:
+        col_dl, col_info = st.columns([1, 3])
+        with col_dl:
+            csv_data = running_sheet.to_csv(index=False)
+            st.download_button(
+                label="Download CSV",
+                data=csv_data,
+                file_name="jobs_running_sheet.csv",
+                mime="text/csv",
+                use_container_width=True,
+            )
+        with col_info:
+            st.caption(f"{len(running_sheet)} total jobs tracked across all searches")
+
+        with st.expander("Preview Running Sheet"):
+            display_cols = [c for c in ["title", "company", "location", "source", "match_score", "status", "date_posted"] if c in running_sheet.columns]
+            st.dataframe(running_sheet[display_cols].tail(200), use_container_width=True)
+    else:
+        st.caption("No running sheet yet. Run a search to start tracking jobs.")
 
 finally:
     db.close()

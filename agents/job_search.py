@@ -81,6 +81,7 @@ def search_jobs(
     custom_location: str = "",
     sites: list[str] | None = None,
     results_wanted: int = 10,
+    job_type: str | None = None,
 ) -> list[Job]:
     """Main job search function. Uses JobSpy to scrape job boards."""
     if custom_query:
@@ -97,6 +98,7 @@ def search_jobs(
             location=q["location"],
             site_name=sites,
             results_wanted=results_wanted,
+            job_type=job_type,
         )
 
         for result in raw_results:

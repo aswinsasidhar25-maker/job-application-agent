@@ -9,6 +9,7 @@ def fetch_jobspy(
     location: str = "",
     site_name: list[str] | None = None,
     results_wanted: int = 10,
+    job_type: str | None = None,
 ) -> list[JobResult]:
     """Scrape jobs using python-jobspy. Returns list of JobResult."""
     try:
@@ -19,15 +20,20 @@ def fetch_jobspy(
     if not site_name:
         site_name = ["indeed", "linkedin", "glassdoor"]
 
+    kwargs = {
+        "site_name": site_name,
+        "search_term": search_term,
+        "results_wanted": results_wanted,
+        "hours_old": 72,
+        "country_indeed": "India",
+    }
+    if location:
+        kwargs["location"] = location
+    if job_type:
+        kwargs["job_type"] = job_type
+
     try:
-        df = scrape_jobs(
-            site_name=site_name,
-            search_term=search_term,
-            location=location if location else None,
-            results_wanted=results_wanted,
-            hours_old=72,
-            country_indeed="India",
-        )
+        df = scrape_jobs(**kwargs)
     except Exception:
         return []
 
