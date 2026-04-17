@@ -62,6 +62,8 @@ def score_single_job(db: Session, profile: UserProfile, job: Job) -> dict:
     job.score_explanation = result.get("explanation", "")
     job.score_details = result
     db.commit()
+    from services.csv_export import update_job_in_csv
+    update_job_in_csv(job)
     return result
 
 
@@ -136,4 +138,10 @@ def score_batch(db: Session, profile: UserProfile, jobs: list[Job]) -> list[dict
             results.append(r)
 
     db.commit()
+
+    from services.csv_export import update_job_in_csv
+    for job in jobs:
+        if job.cv_score is not None:
+            update_job_in_csv(job)
+
     return results

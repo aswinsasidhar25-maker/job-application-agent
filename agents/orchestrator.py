@@ -39,6 +39,8 @@ def update_job_status(db: Session, job_id: int, status: str) -> Job | None:
         job.status = status
         db.commit()
         db.refresh(job)
+        from services.csv_export import update_job_in_csv
+        update_job_in_csv(job)
     return job
 
 

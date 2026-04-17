@@ -3,6 +3,7 @@ from database import SessionLocal, init_db
 from agents.orchestrator import get_profile, has_profile, has_cv, get_jobs, update_job_status
 from agents.job_search import search_jobs
 from agents.cv_scorer import score_batch
+from services.csv_export import load_running_sheet
 
 init_db()
 
@@ -28,19 +29,36 @@ try:
     with col2:
         custom_location = st.text_input(
             "Location",
-            placeholder="e.g., Remote, New York",
+            placeholder="e.g., Remote, Bangalore",
         )
+
+    # JobSpy site selection
+    available_sites = ["indeed", "linkedin", "glassdoor", "zip_recruiter", "google"]
+    selected_sites = st.multiselect(
+        "Job boards to search",
+        available_sites,
+        default=["indeed", "linkedin", "glassdoor"],
+        help="Select which job boards to scrape",
+    )
+
+    results_wanted = st.slider("Results per site", min_value=5, max_value=25, value=10)
 
     col_search, col_score = st.columns(2)
 
     with col_search:
         if st.button("Search Jobs", type="primary", use_container_width=True):
-            with st.spinner("Searching across job boards..."):
-                new_jobs = search_jobs(db, profile, custom_query, custom_location)
-            if new_jobs:
-                st.success(f"Found {len(new_jobs)} new jobs!")
+            if not selected_sites:
+                st.warning("Please select at least one job board.")
             else:
-                st.info("No new jobs found. Try different search terms or check your API keys in .env")
+                with st.spinner("Scraping job boards (this may take a minute)..."):
+                    new_jobs = search_jobs(
+                        db, profile, custom_query, custom_location,
+                        sites=selected_sites, results_wanted=results_wanted,
+                    )
+                if new_jobs:
+                    st.success(f"Found {len(new_jobs)} new jobs!")
+                else:
+                    st.info("No new jobs found. Try different search terms or job boards.")
 
     with col_score:
         unscored = [j for j in get_jobs(db, status="new") if j.cv_score is None]
@@ -53,6 +71,31 @@ try:
                 score_batch(db, profile, unscored)
             st.success("Scoring complete!")
             st.rerun()
+
+    st.markdown("---")
+
+    # Running Sheet Export
+    st.subheader("Running Sheet")
+    running_sheet = load_running_sheet()
+    if running_sheet is not None and not running_sheet.empty:
+        col_dl, col_info = st.columns([1, 3])
+        with col_dl:
+            csv_data = running_sheet.to_csv(index=False)
+            st.download_button(
+                label="Download CSV",
+                data=csv_data,
+                file_name="jobs_running_sheet.csv",
+                mime="text/csv",
+                use_container_width=True,
+            )
+        with col_info:
+            st.caption(f"{len(running_sheet)} total jobs tracked across all searches")
+
+        with st.expander("Preview Running Sheet"):
+            display_cols = [c for c in ["title", "company", "location", "source", "match_score", "status", "date_posted"] if c in running_sheet.columns]
+            st.dataframe(running_sheet[display_cols].tail(200), use_container_width=True)
+    else:
+        st.caption("No running sheet yet. Run a search to start tracking jobs.")
 
     st.markdown("---")
 
@@ -74,7 +117,6 @@ try:
         jobs = sorted(jobs, key=lambda j: j.cv_score or 0)
     elif sort_by == "Newest":
         jobs = sorted(jobs, key=lambda j: j.discovered_at or j.created_at, reverse=True)
-    # Default is Score (High), already sorted by orchestrator
 
     st.write(f"Showing {len(jobs)} jobs")
 
@@ -85,7 +127,6 @@ try:
         status_badge = f" ({job.status})" if job.status != "new" else ""
 
         with st.expander(f"{score_display}{job.title} at {job.company}{status_badge}"):
-            # Job details
             info_col, action_col = st.columns([3, 1])
 
             with info_col:

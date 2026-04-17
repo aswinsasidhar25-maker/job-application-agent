@@ -17,10 +17,3 @@ class JobResult:
     url: str = ""
     posted_date: str = ""
     requirements: list[str] = field(default_factory=list)
-
-
-class JobSource:
-    name: str = "base"
-
-    async def search(self, query: str, location: str = "", **kwargs) -> list[JobResult]:
-        raise NotImplementedError

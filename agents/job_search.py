@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import asyncio
 import json
 import os
 import re
@@ -8,10 +7,8 @@ from rapidfuzz import fuzz
 from sqlalchemy.orm import Session
 from services.llm_client import llm_call
 from services.job_sources.base import JobResult
-from services.job_sources.serpapi_source import SerpAPISource
-from services.job_sources.adzuna_source import AdzunaSource
-from services.job_sources.remotive_source import RemotiveSource
-from services.job_sources.scraper import WebScraperSource
+from services.job_sources.jobspy_source import fetch_jobspy
+from services.csv_export import export_jobs_to_csv
 from models.job import Job
 from models.user import UserProfile
 
@@ -54,26 +51,12 @@ def _strip_html(text: str) -> str:
     return clean.strip()
 
 
-async def _fetch_from_all_sources(query: str, location: str) -> list[JobResult]:
-    """Fetch from all configured sources in parallel."""
-    sources = [SerpAPISource(), AdzunaSource(), RemotiveSource(), WebScraperSource()]
-    tasks = [source.search(query, location) for source in sources]
-    results = await asyncio.gather(*tasks, return_exceptions=True)
-
-    all_jobs = []
-    for result in results:
-        if isinstance(result, list):
-            all_jobs.extend(result)
-    return all_jobs
-
-
 def _summarize_job(db: Session, description: str) -> dict:
     """Summarize a job description using mini model. ~300 tokens."""
     if not description or len(description) < 50:
         return {"summary": description, "requirements": []}
 
     system = _load_prompt()
-    # Truncate description to save tokens
     truncated = description[:2000]
     prompt = f"JOB DESCRIPTION:\n{truncated}"
 
@@ -82,7 +65,7 @@ def _summarize_job(db: Session, description: str) -> dict:
         prompt=prompt,
         task_type="summarize",
         system=system,
-        cache_ttl=168,  # 7 days
+        cache_ttl=168,
     )
 
     try:
@@ -91,8 +74,15 @@ def _summarize_job(db: Session, description: str) -> dict:
         return {"summary": description[:500], "requirements": []}
 
 
-def search_jobs(db: Session, profile: UserProfile, custom_query: str = "", custom_location: str = "") -> list[Job]:
-    """Main job search function. Orchestrates search, dedup, and summarization."""
+def search_jobs(
+    db: Session,
+    profile: UserProfile,
+    custom_query: str = "",
+    custom_location: str = "",
+    sites: list[str] | None = None,
+    results_wanted: int = 10,
+) -> list[Job]:
+    """Main job search function. Uses JobSpy to scrape job boards."""
     if custom_query:
         queries = [{"query": custom_query, "location": custom_location}]
     else:
@@ -102,18 +92,18 @@ def search_jobs(db: Session, profile: UserProfile, custom_query: str = "", custo
     new_jobs = []
 
     for q in queries:
-        raw_results = asyncio.run(
-            _fetch_from_all_sources(q["query"], q["location"])
+        raw_results = fetch_jobspy(
+            search_term=q["query"],
+            location=q["location"],
+            site_name=sites,
+            results_wanted=results_wanted,
         )
 
         for result in raw_results:
-            if _is_duplicate(result, existing_jobs + new_jobs_as_models(new_jobs)):
+            if _is_duplicate(result, existing_jobs + new_jobs):
                 continue
 
-            # Clean description
             clean_desc = _strip_html(result.description)
-
-            # Summarize with mini model
             summary_data = _summarize_job(db, clean_desc)
 
             job = Job(
@@ -136,9 +126,8 @@ def search_jobs(db: Session, profile: UserProfile, custom_query: str = "", custo
             new_jobs.append(job)
 
     db.commit()
+
+    # Export to running sheet CSV
+    export_jobs_to_csv(new_jobs)
+
     return new_jobs
-
-
-def new_jobs_as_models(jobs: list[Job]) -> list[Job]:
-    """Helper to treat uncommitted Job objects as existing for dedup."""
-    return jobs
