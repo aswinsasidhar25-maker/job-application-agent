@@ -25,7 +25,12 @@ def get_jobs(db: Session, status: str | None = None, min_score: float | None = N
     if status:
         query = query.filter(Job.status == status)
     if min_score is not None:
-        query = query.filter(Job.cv_score >= min_score)
+        # Only exclude jobs that have a score AND it's below the threshold
+        # Unscored jobs (NULL) always pass through
+        from sqlalchemy import or_
+        query = query.filter(
+            or_(Job.cv_score >= min_score, Job.cv_score == None)  # noqa: E711
+        )
     return query.order_by(Job.cv_score.desc().nullsfirst()).all()
 
 

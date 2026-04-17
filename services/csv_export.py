@@ -22,7 +22,10 @@ def load_running_sheet() -> pd.DataFrame | None:
     if not os.path.exists(settings.CSV_EXPORT_PATH):
         return None
     try:
-        df = pd.read_csv(settings.CSV_EXPORT_PATH)
+        df = pd.read_csv(settings.CSV_EXPORT_PATH, dtype=str)
+        # Replace nan/None strings with empty string for clean display
+        df = df.fillna("")
+        df = df.replace("nan", "").replace("None", "")
         return df
     except Exception:
         return None

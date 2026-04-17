@@ -65,7 +65,8 @@ def fetch_jobspy(
         loc = str(row.get("location", "") or "")
         desc = str(row.get("description", "") or "")
         site = str(row.get("site", "") or "")
-        posted = str(row.get("date_posted", "") or "")
+        raw_posted = row.get("date_posted")
+        posted = "" if raw_posted is None or str(raw_posted) in ("NaT", "None", "nan", "") else str(raw_posted)[:10]
 
         remote_type = "unknown"
         if row.get("is_remote"):
