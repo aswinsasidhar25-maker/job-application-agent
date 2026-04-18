@@ -11,6 +11,10 @@ class Settings:
 
     MINI_MODEL: str = os.getenv("MINI_MODEL", "gpt-4o-mini")
     FULL_MODEL: str = os.getenv("FULL_MODEL", "gpt-4o")
+    OLLAMA_BASE_URL: str = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
+
+    # JobSpy scraper config
+    JOBSPY_RESULTS_PER_SITE: int = int(os.getenv("JOBSPY_RESULTS_PER_SITE", "15"))
 
     MONTHLY_TOKEN_BUDGET: float = float(os.getenv("MONTHLY_TOKEN_BUDGET", "10.0"))
     DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite:///data/app.db")

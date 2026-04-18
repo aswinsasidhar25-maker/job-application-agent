@@ -34,6 +34,7 @@ try:
 
     cv_data = None
     raw_cv_path = ""
+
     if uploaded_file:
         with st.spinner("Parsing CV..."):
             try:
@@ -65,6 +66,9 @@ try:
         }
         raw_cv_path = existing.raw_cv_path
 
+    extracted = (cv_data.get("structured_cv") or {}) if cv_data else {}
+    suggested_roles = extracted.get("suggested_roles", []) if isinstance(extracted, dict) else []
+
     # Determine default values: CV-extracted > existing profile > empty
     def _default(field: str) -> str:
         cv_val = st.session_state.get(f"cv_{field}", "")
@@ -76,55 +80,8 @@ try:
 
     st.markdown("---")
 
-    # Step 2: Personal Details
-    st.subheader("Step 2: Your Details")
-    col1, col2 = st.columns(2)
-    with col1:
-        name = st.text_input("Full Name", value=_default("name"))
-        email = st.text_input("Email", value=_default("email"))
-        phone = st.text_input("Phone", value=_default("phone"))
-    with col2:
-        location = st.text_input("Current Location", value=_default("location"))
-        min_salary = st.number_input(
-            "Minimum Expected Salary (INR/year)",
-            min_value=0,
-            value=int(existing.min_salary or 0) if existing else 0,
-            step=50000,
-        )
-
-    st.markdown("---")
-
-    # Step 3: Job Preferences
-    st.subheader("Step 3: What roles are you looking for?")
-    roles_text = st.text_area(
-        "Enter roles (one per line)",
-        value="\n".join(existing.preferred_roles or []) if existing else "",
-        placeholder="Software Engineer\nBackend Developer\nFull Stack Developer",
-        help="The agent will search for these roles across job boards."
-    )
-
-    st.markdown("---")
-
-    # Step 4: Location Preferences
-    st.subheader("Step 4: Location & Remote Preference")
-    locations_text = st.text_area(
-        "Preferred locations (one per line, leave empty for any)",
-        value="\n".join(existing.preferred_locations or []) if existing else "",
-        placeholder="Bangalore\nHyderabad\nRemote",
-    )
-    remote_pref = st.selectbox(
-        "Remote preference",
-        ["any", "remote", "hybrid", "onsite"],
-        index=["any", "remote", "hybrid", "onsite"].index(
-            existing.remote_preference if existing else "any"
-        ),
-    )
-
-    st.markdown("---")
-
-    # Step 5: Projects & Portfolio
-    st.subheader("Step 5: Projects & Portfolio")
-
+    # Step 5 inputs that require buttons must live outside the form
+    st.subheader("Portfolio (optional)")
     portfolio_url = st.text_input(
         "Portfolio URL (GitHub profile, personal website, etc.)",
         value=(existing.portfolio_url if existing and hasattr(existing, 'portfolio_url') else ""),
@@ -145,22 +102,77 @@ try:
             except Exception as e:
                 st.error(f"Failed to fetch portfolio: {e}")
 
-    # Use portfolio-fetched projects if available
-    default_projects = st.session_state.get("portfolio_projects", "")
-    if not default_projects:
-        default_projects = existing.projects_summary if existing else ""
+    saved_roles = existing.preferred_roles or [] if existing else []
+    default_roles = saved_roles or suggested_roles
 
-    projects = st.text_area(
-        "Describe 2-3 of your most impactful projects",
-        value=default_projects,
-        placeholder="Built a real-time data pipeline processing 1M events/day...\nLed a team of 5 to redesign the checkout flow, improving conversion by 15%...",
-        height=150,
-    )
+    default_projects = st.session_state.get("portfolio_projects", "") \
+        or (existing.projects_summary if existing else "")
 
     st.markdown("---")
 
-    # Save
-    if st.button("Save Profile", type="primary", use_container_width=True):
+    # Wrap all profile inputs in a single form — no "Press Enter to apply" needed
+    with st.form("profile_form"):
+        # Step 2: Personal Details
+        st.subheader("Step 2: Your Details")
+        col1, col2 = st.columns(2)
+        with col1:
+            name = st.text_input("Full Name", value=_default("name"))
+            email = st.text_input("Email", value=_default("email"))
+            phone = st.text_input("Phone", value=_default("phone"))
+        with col2:
+            location = st.text_input("Current Location", value=_default("location"))
+            min_salary = st.number_input(
+                "Minimum Expected Salary (INR/year)",
+                min_value=0,
+                value=int(existing.min_salary or 0) if existing else 0,
+                step=50000,
+            )
+
+        st.markdown("---")
+
+        # Step 3: Job Preferences
+        st.subheader("Step 3: What roles are you looking for?")
+        if suggested_roles and not saved_roles:
+            st.info(f"Suggested based on your CV: **{', '.join(suggested_roles)}** — edit below as needed.")
+        roles_text = st.text_area(
+            "Enter roles (one per line)",
+            value="\n".join(default_roles),
+            placeholder="Software Engineer\nBackend Developer\nFull Stack Developer",
+            help="The agent will search for these roles across job boards.",
+        )
+
+        st.markdown("---")
+
+        # Step 4: Location Preferences
+        st.subheader("Step 4: Location & Remote Preference")
+        locations_text = st.text_area(
+            "Preferred locations (one per line, leave empty for any)",
+            value="\n".join(existing.preferred_locations or []) if existing else "",
+            placeholder="Bangalore\nHyderabad\nRemote",
+        )
+        remote_pref = st.selectbox(
+            "Remote preference",
+            ["any", "remote", "hybrid", "onsite"],
+            index=["any", "remote", "hybrid", "onsite"].index(
+                existing.remote_preference if existing else "any"
+            ),
+        )
+
+        st.markdown("---")
+
+        # Step 5: Projects
+        st.subheader("Step 5: Tell us about your key projects")
+        projects = st.text_area(
+            "Describe 2-3 of your most impactful projects",
+            value=default_projects,
+            placeholder="Built a real-time data pipeline processing 1M events/day...\nLed a team of 5 to redesign the checkout flow, improving conversion by 15%...",
+            height=150,
+        )
+
+        st.markdown("---")
+        submitted = st.form_submit_button("Save Profile", type="primary", use_container_width=True)
+
+    if submitted:
         roles = [r.strip() for r in roles_text.strip().split("\n") if r.strip()]
         locations = [l.strip() for l in locations_text.strip().split("\n") if l.strip()]
 

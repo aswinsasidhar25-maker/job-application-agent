@@ -26,29 +26,40 @@ def _keyword_overlap(skills: list[str], requirements: list[str]) -> float:
     return overlap / len(req_lower)
 
 
+def _parse_reqs(job: Job) -> list[str]:
+    if isinstance(job.requirements, list):
+        return job.requirements
+    try:
+        return json.loads(job.requirements or "[]")
+    except (json.JSONDecodeError, TypeError):
+        return []
+
+
 def score_single_job(db: Session, profile: UserProfile, job: Job) -> dict:
     """Score a single job against the user's CV."""
+    reqs = _parse_reqs(job)
     # Pre-filter: if keyword overlap < 20%, mark as low match without LLM
-    overlap = _keyword_overlap(profile.skills or [], job.requirements or [])
-    if overlap < 0.2 and job.requirements:
+    overlap = _keyword_overlap(profile.skills or [], reqs)
+    if overlap < 0.2 and reqs:
         result = {
             "score": int(overlap * 100),
             "matches": [],
-            "gaps": job.requirements[:5],
+            "gaps": reqs[:5],
             "explanation": "Low keyword overlap - likely not a strong match.",
         }
         job.cv_score = result["score"]
         job.score_explanation = result["explanation"]
-        job.score_details = result
+        job.score_details = json.dumps(result)
         db.commit()
         return result
 
     system = _load_prompt()
     prompt = (
-        f"JOB REQUIREMENTS: {json.dumps(job.requirements or [])}\n"
+        f"JOB REQUIREMENTS: {json.dumps(reqs)}\n"
         f"JOB TITLE: {job.title}\n"
         f"CANDIDATE SKILLS: {json.dumps(profile.skills or [])}\n"
-        f"CANDIDATE EXPERIENCE: {profile.experience_summary or 'Not provided'}"
+        f"CANDIDATE EXPERIENCE PREVIEW/SUMMARY: {profile.experience_summary or 'Not provided'}\n"
+        f"CANDIDATE DETAILED EXPERIENCE:\n{json.dumps(profile.structured_cv.get('experience_details', []), indent=2)}"
     )
 
     response = llm_call(db=db, prompt=prompt, task_type="score", system=system)
@@ -60,7 +71,7 @@ def score_single_job(db: Session, profile: UserProfile, job: Job) -> dict:
 
     job.cv_score = result.get("score", 50)
     job.score_explanation = result.get("explanation", "")
-    job.score_details = result
+    job.score_details = json.dumps(result)
     db.commit()
     from services.csv_export import update_job_in_csv
     update_job_in_csv(job)
@@ -78,17 +89,18 @@ def score_batch(db: Session, profile: UserProfile, jobs: list[Job]) -> list[dict
         # Filter out jobs that can be pre-scored without LLM
         llm_batch = []
         for job in batch:
-            overlap = _keyword_overlap(profile.skills or [], job.requirements or [])
-            if overlap < 0.2 and job.requirements:
+            reqs = _parse_reqs(job)
+            overlap = _keyword_overlap(profile.skills or [], reqs)
+            if overlap < 0.2 and reqs:
                 result = {
                     "score": int(overlap * 100),
                     "matches": [],
-                    "gaps": job.requirements[:5],
+                    "gaps": reqs[:5],
                     "explanation": "Low keyword overlap.",
                 }
                 job.cv_score = result["score"]
                 job.score_explanation = result["explanation"]
-                job.score_details = result
+                job.score_details = json.dumps(result)
                 results.append(result)
             else:
                 llm_batch.append(job)
@@ -106,14 +118,15 @@ def score_batch(db: Session, profile: UserProfile, jobs: list[Job]) -> list[dict
         for idx, job in enumerate(llm_batch):
             jobs_text += (
                 f"\nJOB {idx + 1}: {job.title} at {job.company}\n"
-                f"Requirements: {json.dumps(job.requirements or [])}\n"
+                f"Requirements: {json.dumps(_parse_reqs(job))}\n"
             )
 
         prompt = (
             f"Score this candidate against {len(llm_batch)} jobs. "
             f"Return JSON array of scores.\n"
             f"CANDIDATE SKILLS: {json.dumps(profile.skills or [])}\n"
-            f"CANDIDATE EXPERIENCE: {profile.experience_summary or 'Not provided'}\n"
+            f"CANDIDATE EXPERIENCE SUMMARY: {profile.experience_summary or 'Not provided'}\n"
+            f"CANDIDATE DETAILED EXPERIENCE:\n{json.dumps(profile.structured_cv.get('experience_details', []), indent=2)}\n"
             f"{jobs_text}"
         )
 
@@ -134,7 +147,7 @@ def score_batch(db: Session, profile: UserProfile, jobs: list[Job]) -> list[dict
             r = batch_results[j] if j < len(batch_results) else {"score": 50}
             job.cv_score = r.get("score", 50)
             job.score_explanation = r.get("explanation", "")
-            job.score_details = r
+            job.score_details = json.dumps(r)
             results.append(r)
 
     db.commit()

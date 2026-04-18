@@ -1,3 +1,4 @@
+import json
 import streamlit as st
 from database import SessionLocal, init_db
 from agents.orchestrator import get_profile, has_profile, has_cv, get_jobs, update_job_status
@@ -20,60 +21,59 @@ try:
 
     # Search controls
     st.subheader("Search for Jobs")
-    col1, col2 = st.columns([3, 1])
-    with col1:
-        custom_query = st.text_input(
-            "Search query (leave empty to use your profile preferences)",
-            placeholder=f"e.g., {', '.join(profile.preferred_roles[:2]) if profile.preferred_roles else 'Software Engineer'}",
-        )
-    with col2:
-        custom_location = st.text_input(
-            "Location",
-            placeholder="e.g., Remote, Bangalore",
-        )
+    with st.form("search_form"):
+        col1, col2 = st.columns([3, 1])
+        with col1:
+            custom_query = st.text_input(
+                "Search query (leave empty to use your profile preferences)",
+                placeholder=f"e.g., {', '.join(profile.preferred_roles[:2]) if profile.preferred_roles else 'Software Engineer'}",
+            )
+        with col2:
+            custom_location = st.text_input(
+                "Location",
+                placeholder="e.g., Remote, Bangalore",
+            )
 
-    # JobSpy configuration
-    config_col1, config_col2 = st.columns(2)
-    with config_col1:
-        available_sites = ["indeed", "linkedin", "glassdoor", "zip_recruiter", "google"]
-        selected_sites = st.multiselect(
-            "Job boards to search",
-            available_sites,
-            default=["indeed", "linkedin", "glassdoor"],
-            help="Select which job boards to scrape",
-        )
-    with config_col2:
-        results_wanted = st.slider("Results per site", min_value=5, max_value=25, value=10)
+        # JobSpy configuration
+        config_col1, config_col2 = st.columns(2)
+        with config_col1:
+            available_sites = ["indeed", "linkedin", "glassdoor", "zip_recruiter", "google"]
+            selected_sites = st.multiselect(
+                "Job boards to search",
+                available_sites,
+                default=["indeed", "linkedin", "glassdoor"],
+                help="Select which job boards to scrape",
+            )
+        with config_col2:
+            results_wanted = st.slider("Results per site", min_value=5, max_value=25, value=10)
 
-    col_search, col_score = st.columns(2)
+        search_clicked = st.form_submit_button("Search Jobs", type="primary", use_container_width=True)
 
-    with col_search:
-        if st.button("Search Jobs", type="primary", use_container_width=True):
-            if not selected_sites:
-                st.warning("Please select at least one job board.")
+    if search_clicked:
+        if not selected_sites:
+            st.warning("Please select at least one job board.")
+        else:
+            with st.spinner("Scraping job boards (this may take a minute)..."):
+                new_jobs = search_jobs(
+                    db, profile, custom_query, custom_location,
+                    sites=selected_sites, results_wanted=results_wanted,
+                )
+            if new_jobs:
+                st.success(f"Found {len(new_jobs)} new jobs!")
+                st.rerun()
             else:
-                with st.spinner("Scraping job boards (this may take a minute)..."):
-                    new_jobs = search_jobs(
-                        db, profile, custom_query, custom_location,
-                        sites=selected_sites, results_wanted=results_wanted,
-                    )
-                if new_jobs:
-                    st.success(f"Found {len(new_jobs)} new jobs!")
-                    st.rerun()
-                else:
-                    st.info("No new jobs found. Try different search terms or job boards.")
+                st.info("No new jobs found. Try different search terms or job boards.")
 
-    with col_score:
-        unscored = [j for j in get_jobs(db, status="new") if j.cv_score is None]
-        if st.button(
-            f"Score Unscored Jobs ({len(unscored)})",
-            use_container_width=True,
-            disabled=not unscored or not has_cv(db),
-        ):
-            with st.spinner(f"Scoring {len(unscored)} jobs in batches..."):
-                score_batch(db, profile, unscored)
-            st.success("Scoring complete!")
-            st.rerun()
+    unscored = [j for j in get_jobs(db, status="new") if j.cv_score is None]
+    if st.button(
+        f"Score Unscored Jobs ({len(unscored)})",
+        use_container_width=True,
+        disabled=not unscored or not has_cv(db),
+    ):
+        with st.spinner(f"Scoring {len(unscored)} jobs in batches..."):
+            score_batch(db, profile, unscored)
+        st.success("Scoring complete!")
+        st.rerun()
 
     st.markdown("---")
 
@@ -131,7 +131,10 @@ try:
                     st.markdown(f"**Score Analysis:** {job.score_explanation}")
 
                 if job.score_details:
-                    details = job.score_details if isinstance(job.score_details, dict) else {}
+                    try:
+                        details = json.loads(job.score_details) if isinstance(job.score_details, str) else job.score_details or {}
+                    except (json.JSONDecodeError, TypeError):
+                        details = {}
                     matches = details.get("matches", [])
                     gaps = details.get("gaps", [])
                     if matches:

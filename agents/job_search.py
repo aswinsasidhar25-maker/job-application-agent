@@ -108,6 +108,19 @@ def search_jobs(
             clean_desc = _strip_html(result.description)
             summary_data = _summarize_job(db, clean_desc)
 
+            # Coerce LLM output to correct types before saving
+            raw_summary = summary_data.get("summary", "")
+            if isinstance(raw_summary, list):
+                raw_summary = "\n".join(str(s) for s in raw_summary)
+            elif not isinstance(raw_summary, str):
+                raw_summary = str(raw_summary)
+
+            raw_reqs = summary_data.get("requirements", result.requirements or [])
+            if isinstance(raw_reqs, str):
+                raw_reqs = [raw_reqs]
+            elif not isinstance(raw_reqs, list):
+                raw_reqs = []
+
             job = Job(
                 external_id=result.external_id,
                 source=result.source,
@@ -118,8 +131,8 @@ def search_jobs(
                 salary_min=result.salary_min,
                 salary_max=result.salary_max,
                 description_raw=clean_desc,
-                description_summary=summary_data.get("summary", ""),
-                requirements=summary_data.get("requirements", result.requirements),
+                description_summary=raw_summary,
+                requirements=json.dumps(raw_reqs),
                 url=result.url,
                 posted_date=result.posted_date,
                 status="new",

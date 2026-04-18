@@ -1,2 +1,4 @@
-Extract structured profile from CV text. Return JSON only. Extract contact details from the CV header section.
-{"name":"full name","email":"email address","phone":"phone number","location":"city, state or country","skills":["skill1","skill2"],"experience_summary":"2-3 sentences","years_experience":0,"most_recent_role":"","education_level":""}
+Extract structured profile from this CV. Return JSON only, no explanation. Extract contact details from the CV header section.
+Ensure "experience_summary" contains an actual 2-3 sentence summary of their work history and achievements.
+Extract all work history into "experience_details", providing exhaustive lists of accomplishments for each role.
+{"name":"full name","email":"email address","phone":"phone number","location":"city, state or country","most_recent_role":"","years_experience":0,"education_level":"","skills":["skill1"],"experience_summary":"","experience_details":[{"company":"","role":"","duration":"","achievements":["accomplishment 1","accomplishment 2"]}],"suggested_roles":["role1","role2"]}

@@ -31,7 +31,7 @@ def process_cv(db: Session, file_path: str) -> dict:
 
     # Single mini-model call to extract structured profile
     system = _load_prompt()
-    prompt = f"CV TEXT:\n{raw_text[:3000]}"  # Truncate to save tokens
+    prompt = f"CV TEXT:\n{raw_text}"  # Read entire CV without truncation
 
     response = llm_call(
         db=db,

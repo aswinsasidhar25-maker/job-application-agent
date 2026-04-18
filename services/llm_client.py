@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import json
+import time
 from datetime import datetime, timezone
 from litellm import completion
+from litellm.exceptions import RateLimitError
 from sqlalchemy.orm import Session
 from config import settings
 from models.cache import TokenUsage
@@ -93,11 +95,29 @@ def llm_call(
         messages.append({"role": "system", "content": system})
     messages.append({"role": "user", "content": prompt})
 
+    is_ollama = model.startswith("ollama/")
     kwargs = {"model": model, "messages": messages, "temperature": 0.3}
-    if json_mode:
+    if is_ollama:
+        kwargs["api_base"] = settings.OLLAMA_BASE_URL
+    # Ollama models use format param, not response_format; only enable json_mode for cloud models
+    if json_mode and not is_ollama:
         kwargs["response_format"] = {"type": "json_object"}
+    elif json_mode and is_ollama:
+        # Ask the model to respond in JSON via the prompt instead
+        messages[-1]["content"] += "\n\nRespond with valid JSON only. No explanation."
 
-    response = completion(**kwargs)
+    # Retry with exponential backoff for rate limit errors (Gemini free tier: 15 RPM)
+    for attempt in range(4):
+        try:
+            response = completion(**kwargs)
+            break
+        except RateLimitError:
+            if attempt == 3:
+                return json.dumps({"error": "Rate limit exceeded. Please wait a moment and try again."})
+            wait = 5 * (2 ** attempt)  # 5s, 10s, 20s, 40s
+            time.sleep(wait)
+    else:
+        return json.dumps({"error": "Rate limit exceeded after retries."})
 
     text = response.choices[0].message.content or ""
     tokens_in = response.usage.prompt_tokens if response.usage else 0
