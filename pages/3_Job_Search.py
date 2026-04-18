@@ -20,40 +20,38 @@ try:
 
     # Search controls
     st.subheader("Search for Jobs")
-    col1, col2 = st.columns([3, 1])
-    with col1:
-        custom_query = st.text_input(
-            "Search query (leave empty to use your profile preferences)",
-            placeholder=f"e.g., {', '.join(profile.preferred_roles[:2]) if profile.preferred_roles else 'Software Engineer'}",
-        )
-    with col2:
-        custom_location = st.text_input(
-            "Location",
-            placeholder="e.g., Remote, New York",
-        )
+    with st.form("search_form"):
+        col1, col2 = st.columns([3, 1])
+        with col1:
+            custom_query = st.text_input(
+                "Search query (leave empty to use your profile preferences)",
+                placeholder=f"e.g., {', '.join(profile.preferred_roles[:2]) if profile.preferred_roles else 'Software Engineer'}",
+            )
+        with col2:
+            custom_location = st.text_input(
+                "Location",
+                placeholder="e.g., Remote, New York",
+            )
+        search_clicked = st.form_submit_button("Search Jobs", type="primary", use_container_width=True)
 
-    col_search, col_score = st.columns(2)
+    if search_clicked:
+        with st.spinner("Searching across job boards..."):
+            new_jobs = search_jobs(db, profile, custom_query, custom_location)
+        if new_jobs:
+            st.success(f"Found {len(new_jobs)} new jobs!")
+        else:
+            st.info("No new jobs found. Try different search terms or check your API keys in .env")
 
-    with col_search:
-        if st.button("Search Jobs", type="primary", use_container_width=True):
-            with st.spinner("Searching across job boards..."):
-                new_jobs = search_jobs(db, profile, custom_query, custom_location)
-            if new_jobs:
-                st.success(f"Found {len(new_jobs)} new jobs!")
-            else:
-                st.info("No new jobs found. Try different search terms or check your API keys in .env")
-
-    with col_score:
-        unscored = [j for j in get_jobs(db, status="new") if j.cv_score is None]
-        if st.button(
-            f"Score Unscored Jobs ({len(unscored)})",
-            use_container_width=True,
-            disabled=not unscored or not has_cv(db),
-        ):
-            with st.spinner(f"Scoring {len(unscored)} jobs in batches..."):
-                score_batch(db, profile, unscored)
-            st.success("Scoring complete!")
-            st.rerun()
+    unscored = [j for j in get_jobs(db, status="new") if j.cv_score is None]
+    if st.button(
+        f"Score Unscored Jobs ({len(unscored)})",
+        use_container_width=True,
+        disabled=not unscored or not has_cv(db),
+    ):
+        with st.spinner(f"Scoring {len(unscored)} jobs in batches..."):
+            score_batch(db, profile, unscored)
+        st.success("Scoring complete!")
+        st.rerun()
 
     st.markdown("---")
 
