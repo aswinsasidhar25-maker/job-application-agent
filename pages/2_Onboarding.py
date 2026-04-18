@@ -34,13 +34,16 @@ try:
 
     cv_data = None
     raw_cv_path = ""
+    extracted = {}  # structured data from CV LLM call
+
     if uploaded_file:
-        with st.spinner("Parsing CV..."):
+        with st.spinner("Parsing CV and extracting your details..."):
             file_bytes = uploaded_file.read()
             raw_cv_path = save_cv_file(file_bytes, uploaded_file.name)
             cv_data = process_cv(db, raw_cv_path)
+            extracted = cv_data.get("structured_cv", {}) or {}
 
-        st.success("CV parsed successfully!")
+        st.success("CV parsed! Fields below have been auto-filled — review and adjust as needed.")
         with st.expander("Extracted Skills", expanded=True):
             skills = cv_data.get("skills", [])
             st.write(", ".join(skills) if skills else "No skills detected")
@@ -56,15 +59,22 @@ try:
 
     st.markdown("---")
 
+    # Helper: prefer existing saved value, then CV-extracted, then empty
+    def prefill(field, extracted_key=None):
+        saved = getattr(existing, field, "") if existing else ""
+        if saved:
+            return saved
+        return extracted.get(extracted_key or field, "") or ""
+
     # Step 2: Personal Details
     st.subheader("Step 2: Your Details")
     col1, col2 = st.columns(2)
     with col1:
-        name = st.text_input("Full Name", value=existing.name if existing else "")
-        email = st.text_input("Email", value=existing.email if existing else "")
-        phone = st.text_input("Phone", value=existing.phone if existing else "")
+        name = st.text_input("Full Name", value=prefill("name"))
+        email = st.text_input("Email", value=prefill("email"))
+        phone = st.text_input("Phone", value=prefill("phone"))
     with col2:
-        location = st.text_input("Current Location", value=existing.location if existing else "")
+        location = st.text_input("Current Location", value=prefill("location"))
         min_salary = st.number_input(
             "Minimum Salary (USD/year)",
             min_value=0,
@@ -74,11 +84,17 @@ try:
 
     st.markdown("---")
 
-    # Step 3: Job Preferences
+    # Step 3: Job Preferences — suggest roles from CV if none saved
+    suggested_roles = extracted.get("suggested_roles", [])
+    saved_roles = existing.preferred_roles or [] if existing else []
+    default_roles = saved_roles or suggested_roles
+
     st.subheader("Step 3: What roles are you looking for?")
+    if suggested_roles and not saved_roles:
+        st.info(f"Suggested based on your CV: **{', '.join(suggested_roles)}** — edit below as needed.")
     roles_text = st.text_area(
         "Enter roles (one per line)",
-        value="\n".join(existing.preferred_roles or []) if existing else "",
+        value="\n".join(default_roles),
         placeholder="Software Engineer\nBackend Developer\nFull Stack Developer",
         help="The agent will search for these roles across job boards."
     )

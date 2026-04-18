@@ -1,2 +1,2 @@
-Extract structured profile from CV text and user inputs. Return JSON only.
-{"skills":["skill1","skill2"],"experience_summary":"2-3 sentences","years_experience":0,"most_recent_role":"","education_level":""}
+Extract structured profile from this CV. Return JSON only, no explanation.
+{"name":"","email":"","phone":"","location":"","most_recent_role":"","years_experience":0,"education_level":"","skills":["skill1"],"experience_summary":"2-3 sentences","suggested_roles":["role1","role2"]}
