@@ -9,6 +9,7 @@ from services.llm_client import llm_call
 from services.job_sources.base import JobResult
 from services.job_sources.jobspy_source import fetch_jobspy
 from services.csv_export import export_jobs_to_csv
+from services.location_matcher import location_matches
 from models.job import Job
 from models.user import UserProfile
 
@@ -92,6 +93,8 @@ def search_jobs(
     existing_jobs = db.query(Job).all()
     new_jobs = []
 
+    remote_pref = getattr(profile, "remote_preference", "any") or "any"
+
     for q in queries:
         raw_results = fetch_jobspy(
             search_term=q["query"],
@@ -102,6 +105,8 @@ def search_jobs(
         )
 
         for result in raw_results:
+            if not location_matches(q["location"], result.location, remote_pref):
+                continue
             if _is_duplicate(result, existing_jobs + new_jobs):
                 continue
 

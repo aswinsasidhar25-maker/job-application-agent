@@ -39,12 +39,17 @@ def extract_text(file_path: str) -> str:
 def extract_sections(text: str) -> dict[str, str]:
     """Rule-based section extraction from CV text. Zero LLM tokens."""
     section_patterns = [
-        (r"(?i)\b(summary|profile|objective|about)\b", "summary"),
-        (r"(?i)\b(experiences?|work\s*history|employment)\b", "experience"),
-        (r"(?i)\b(education|academics?|qualifications?)\b", "education"),
-        (r"(?i)\b(skills?|technical|competenc|technologies)\b", "skills"),
-        (r"(?i)\b(projects?|portfolio)\b", "projects"),
-        (r"(?i)\b(certif|licens|credentials?)\b", "certifications"),
+        (r"(?i)\b(summary|profile|objective|about\s*me|professional\s*summary)\b", "summary"),
+        (r"(?i)\b(experiences?|work\s*history|employment|work\s*experience|professional\s*experience|career)\b", "experience"),
+        (r"(?i)\b(education|academics?|qualifications?|academic\s*background)\b", "education"),
+        (r"(?i)\b(skills?|technical\s*skills?|core\s*competenc|competenc|technologies|tech\s*stack|tools)\b", "skills"),
+        (r"(?i)\b(projects?|portfolio|personal\s*projects?|side\s*projects?)\b", "projects"),
+        (r"(?i)\b(certif|licens|credentials?|accreditations?)\b", "certifications"),
+        (r"(?i)\b(languages?)\b", "languages"),
+        (r"(?i)\b(awards?|honou?rs?|achievements?|accomplishments?)\b", "awards"),
+        (r"(?i)\b(publications?|research|papers?)\b", "publications"),
+        (r"(?i)\b(volunteer|community|extra-?curricular)\b", "volunteer"),
+        (r"(?i)\b(interests?|hobbies)\b", "interests"),
     ]
 
     lines = text.split("\n")
@@ -75,21 +80,73 @@ def extract_sections(text: str) -> dict[str, str]:
 def extract_skills_keywords(text: str) -> list[str]:
     """Extract skills using keyword matching. Zero LLM tokens."""
     known_skills = [
-        "python", "javascript", "typescript", "java", "c++", "c#", "go", "rust",
-        "react", "angular", "vue", "node.js", "django", "flask", "fastapi",
-        "sql", "postgresql", "mysql", "mongodb", "redis", "elasticsearch",
-        "aws", "azure", "gcp", "docker", "kubernetes", "terraform",
-        "git", "ci/cd", "jenkins", "github actions",
-        "machine learning", "deep learning", "nlp", "computer vision",
-        "tensorflow", "pytorch", "scikit-learn", "pandas", "numpy",
-        "html", "css", "sass", "tailwind", "bootstrap",
-        "rest api", "graphql", "grpc", "microservices",
-        "agile", "scrum", "jira", "confluence",
-        "linux", "bash", "shell scripting",
-        "data analysis", "data engineering", "etl",
-        "figma", "sketch", "ui/ux",
-        "product management", "project management",
-        "communication", "leadership", "teamwork",
+        # Languages
+        "python", "javascript", "typescript", "java", "c++", "c#", "go", "golang",
+        "rust", "ruby", "php", "kotlin", "swift", "scala", "r", "matlab", "perl",
+        "dart", "objective-c", "lua", "haskell", "clojure", "elixir", "solidity",
+        # Frontend frameworks
+        "react", "react native", "angular", "vue", "vue.js", "next.js", "nuxt",
+        "svelte", "ember", "jquery", "redux", "mobx", "zustand",
+        # Backend frameworks
+        "node.js", "express", "nestjs", "django", "flask", "fastapi", "spring",
+        "spring boot", "rails", "laravel", ".net", "asp.net", "gin", "fiber",
+        # Databases
+        "sql", "postgresql", "mysql", "mariadb", "sqlite", "oracle", "sql server",
+        "mongodb", "dynamodb", "cassandra", "redis", "elasticsearch", "neo4j",
+        "snowflake", "bigquery", "redshift", "databricks", "clickhouse",
+        # Cloud / DevOps
+        "aws", "azure", "gcp", "google cloud", "digitalocean", "heroku",
+        "docker", "kubernetes", "k8s", "terraform", "ansible", "pulumi",
+        "helm", "istio", "prometheus", "grafana", "datadog", "new relic",
+        # CI/CD
+        "git", "github", "gitlab", "bitbucket", "ci/cd", "jenkins",
+        "github actions", "circleci", "travis", "argocd",
+        # ML / Data
+        "machine learning", "deep learning", "nlp", "llm", "generative ai",
+        "computer vision", "reinforcement learning", "mlops",
+        "tensorflow", "pytorch", "keras", "scikit-learn", "xgboost", "lightgbm",
+        "pandas", "numpy", "scipy", "matplotlib", "seaborn", "plotly",
+        "hugging face", "langchain", "openai", "anthropic",
+        "spark", "hadoop", "kafka", "airflow", "dbt", "fivetran",
+        # Frontend
+        "html", "html5", "css", "css3", "sass", "scss", "less", "tailwind",
+        "bootstrap", "material ui", "chakra ui", "styled components",
+        # APIs / Architecture
+        "rest api", "graphql", "grpc", "soap", "websocket", "microservices",
+        "event-driven", "serverless", "lambda", "api gateway",
+        # Agile / PM
+        "agile", "scrum", "kanban", "jira", "confluence", "asana", "trello",
+        "notion", "linear",
+        # OS / Scripting
+        "linux", "unix", "macos", "windows", "bash", "shell scripting",
+        "powershell", "zsh",
+        # Data
+        "data analysis", "data engineering", "data science", "etl", "elt",
+        "tableau", "power bi", "looker", "metabase", "superset",
+        # Design
+        "figma", "sketch", "adobe xd", "photoshop", "illustrator",
+        "invision", "ui/ux", "user research", "wireframing", "prototyping",
+        # PM / soft
+        "product management", "product strategy", "roadmapping", "project management",
+        "stakeholder management", "a/b testing",
+        "communication", "leadership", "teamwork", "mentoring", "problem solving",
+        "critical thinking", "analytical",
+        # Testing
+        "unit testing", "integration testing", "jest", "pytest", "cypress",
+        "selenium", "playwright", "junit", "mocha", "chai",
+        # Security
+        "cybersecurity", "penetration testing", "owasp", "oauth", "jwt",
+        "encryption", "tls", "ssl",
+        # Business / Sales / Marketing
+        "seo", "sem", "google analytics", "hubspot", "salesforce", "marketo",
+        "digital marketing", "content marketing", "brand management",
+        "sales strategy", "crm", "b2b", "b2c",
+        # Finance
+        "financial modeling", "excel", "vba", "bloomberg", "quickbooks",
     ]
     text_lower = text.lower()
-    return [s for s in known_skills if s in text_lower]
+    found = []
+    for s in known_skills:
+        if s in text_lower and s not in found:
+            found.append(s)
+    return found
