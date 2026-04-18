@@ -13,6 +13,7 @@ from services.job_sources.serpapi_source import SerpAPISource
 from services.job_sources.adzuna_source import AdzunaSource
 from services.job_sources.remotive_source import RemotiveSource
 from services.job_sources.scraper import WebScraperSource
+from services.job_sources.jobspy_source import JobSpySource
 from models.job import Job
 from models.user import UserProfile
 
@@ -57,7 +58,7 @@ def _strip_html(text: str) -> str:
 
 async def _fetch_from_all_sources(query: str, location: str) -> list[JobResult]:
     """Fetch from all configured sources in parallel."""
-    sources = [SerpAPISource(), AdzunaSource(), RemotiveSource(), WebScraperSource()]
+    sources = [JobSpySource(), RemotiveSource(), SerpAPISource(), AdzunaSource(), WebScraperSource()]
     tasks = [source.search(query, location) for source in sources]
     results = await asyncio.gather(*tasks, return_exceptions=True)
 
