@@ -1,4 +1,35 @@
-Extract structured profile from this CV. Return JSON only, no explanation.
-Ensure "experience_summary" contains an actual 2-3 sentence summary of their work history and achievements.
-Extract all work history into "experience_details", providing exhaustive lists of accomplishments for each role.
-{"name":"","email":"","phone":"","location":"","most_recent_role":"","years_experience":0,"education_level":"","skills":["skill1"],"experience_summary":"","experience_details":[{"company":"","role":"","duration":"","achievements":["accomplishment 1","accomplishment 2"]}],"suggested_roles":["role1","role2"]}
+Extract a complete, structured profile from the CV below. Read the ENTIRE CV end-to-end. Do not skip sections. Return JSON only - no prose, no markdown, no code fences.
+
+Requirements:
+- "experience_summary": 2-3 sentence narrative of work history and biggest achievements.
+- "experience_details": EVERY role the candidate has held, in reverse chronological order. For each role include an exhaustive list of concrete accomplishments (quantified wherever the CV quantifies them). Do NOT drop or merge roles.
+- "skills": every technical and domain skill you can infer - tools, frameworks, methodologies, domain areas. Use single-term skill tags (e.g. "python", "a/b testing").
+- "education": each degree/institution/year the CV lists.
+- "certifications": each certification with issuer and year if given.
+- "projects": notable projects (name + 1 sentence each).
+- "languages": spoken/written languages if listed.
+- "suggested_roles": 3-5 job titles that best fit this candidate based on their most recent and strongest experience.
+- If a field is genuinely absent from the CV, use "" or [] - do NOT invent values.
+
+Schema:
+{
+  "name": "",
+  "email": "",
+  "phone": "",
+  "location": "",
+  "linkedin": "",
+  "portfolio": "",
+  "most_recent_role": "",
+  "years_experience": 0,
+  "education_level": "",
+  "education": [{"institution": "", "degree": "", "year": ""}],
+  "skills": ["skill1"],
+  "experience_summary": "",
+  "experience_details": [
+    {"company": "", "role": "", "location": "", "duration": "", "achievements": ["accomplishment 1", "accomplishment 2"]}
+  ],
+  "projects": [{"name": "", "description": ""}],
+  "certifications": [{"name": "", "issuer": "", "year": ""}],
+  "languages": ["English"],
+  "suggested_roles": ["role1", "role2"]
+}

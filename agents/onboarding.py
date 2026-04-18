@@ -29,9 +29,15 @@ def process_cv(db: Session, file_path: str) -> dict:
     sections = extract_sections(raw_text)
     keyword_skills = extract_skills_keywords(raw_text)
 
-    # Single mini-model call to extract structured profile
+    # Single mini-model call to extract structured profile.
+    # Pass the full raw text AND the rule-based section hints so the model has
+    # both the original ordering and a pre-chunked view to cross-reference.
     system = _load_prompt()
-    prompt = f"CV TEXT:\n{raw_text}"  # Read entire CV without truncation
+    sections_hint = "\n".join(f"[{name.upper()}]\n{body}" for name, body in sections.items() if body)
+    prompt = (
+        f"CV TEXT (full, verbatim):\n{raw_text}\n\n"
+        f"---\nDETECTED SECTIONS (for your reference, may be incomplete):\n{sections_hint}"
+    )
 
     response = llm_call(
         db=db,
@@ -46,9 +52,15 @@ def process_cv(db: Session, file_path: str) -> dict:
     except json.JSONDecodeError:
         structured = {}
 
-    # Merge LLM-extracted skills with keyword-extracted skills (dedup)
-    llm_skills = structured.get("skills", [])
-    all_skills = list(set(llm_skills + keyword_skills))
+    # Merge LLM-extracted skills with keyword-extracted skills (dedup, preserve order)
+    llm_skills = structured.get("skills", []) or []
+    seen = set()
+    all_skills = []
+    for s in list(llm_skills) + list(keyword_skills):
+        key = s.lower().strip() if isinstance(s, str) else ""
+        if key and key not in seen:
+            seen.add(key)
+            all_skills.append(s)
     structured["skills"] = all_skills
 
     return {

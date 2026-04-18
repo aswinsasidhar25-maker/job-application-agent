@@ -14,6 +14,7 @@ from services.job_sources.adzuna_source import AdzunaSource
 from services.job_sources.remotive_source import RemotiveSource
 from services.job_sources.scraper import WebScraperSource
 from services.job_sources.jobspy_source import JobSpySource
+from services.location_matcher import location_matches
 from models.job import Job
 from models.user import UserProfile
 
@@ -103,12 +104,16 @@ def search_jobs(db: Session, profile: UserProfile, custom_query: str = "", custo
     existing_jobs = db.query(Job).all()
     new_jobs = []
 
+    remote_pref = getattr(profile, "remote_preference", "any") or "any"
+
     for q in queries:
         raw_results = asyncio.run(
             _fetch_from_all_sources(q["query"], q["location"])
         )
 
         for result in raw_results:
+            if not location_matches(q["location"], result.location, remote_pref):
+                continue
             if _is_duplicate(result, existing_jobs + new_jobs_as_models(new_jobs)):
                 continue
 

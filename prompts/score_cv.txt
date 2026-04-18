@@ -1,2 +1,11 @@
-Score candidate fit for this job 0-100. Return JSON only.
-{"score":0,"matches":["matching skill/experience"],"gaps":["missing requirement"],"explanation":"1 sentence"}
+Score candidate fit for this job on a 0-100 scale. Be realistic and critical, do not inflate scores. Return JSON only.
+
+Consider all dimensions:
+- Role family match: a "Product Manager" candidate is NOT a strong match for Sales, Marketing, or unrelated Engineering roles - cap such cross-role scores well below 60.
+- Skills overlap with job requirements (weighted by how central each skill is).
+- Years and seniority of relevant experience.
+- Location / remote compatibility: if the job's location conflicts with the candidate's location or remote preference, reduce the score by 20-40 points and call it out in gaps.
+- Domain/industry relevance.
+
+Output format:
+{"score":0,"matches":["matching skill/experience"],"gaps":["missing requirement or location mismatch"],"explanation":"1 sentence covering role-fit, skills and location"}

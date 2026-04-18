@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 from sqlalchemy.orm import Session
 from services.llm_client import llm_call
 from models.job import Job
@@ -14,16 +15,53 @@ def _load_prompt():
         return f.read().strip()
 
 
+_STOPWORDS = {
+    "and", "or", "with", "the", "a", "an", "of", "in", "for", "to", "on",
+    "at", "by", "is", "are", "be", "been", "as", "from", "using", "use",
+    "experience", "years", "year", "strong", "good", "excellent",
+}
+
+
+def _tokenize(text: str) -> set[str]:
+    if not text:
+        return set()
+    return {t for t in re.findall(r"[a-z0-9+#.]+", text.lower()) if t and t not in _STOPWORDS and len(t) > 1}
+
+
 def _keyword_overlap(skills: list[str], requirements: list[str]) -> float:
-    """Rule-based pre-filter. Returns overlap ratio 0-1. Zero LLM tokens."""
+    """Rule-based pre-filter. Returns overlap ratio 0-1. Zero LLM tokens.
+
+    Uses substring and token-overlap matching so e.g. candidate skill "python"
+    matches requirement "Python 3" or "5+ years of Python development".
+    """
     if not requirements:
         return 0.5  # Unknown requirements, don't filter out
-    skills_lower = {s.lower() for s in skills}
-    req_lower = {r.lower() for r in requirements}
-    if not req_lower:
+    skills_lower = [s.lower().strip() for s in (skills or []) if s and s.strip()]
+    if not skills_lower:
+        return 0.0
+
+    skill_tokens = set()
+    for s in skills_lower:
+        skill_tokens |= _tokenize(s)
+
+    matched = 0
+    total = 0
+    for req in requirements:
+        req_lower = (req or "").lower().strip()
+        if not req_lower:
+            continue
+        total += 1
+        # Direct substring match either way
+        if any(s and (s in req_lower or req_lower in s) for s in skills_lower):
+            matched += 1
+            continue
+        # Token-level overlap
+        req_tokens = _tokenize(req_lower)
+        if req_tokens and skill_tokens & req_tokens:
+            matched += 1
+    if total == 0:
         return 0.5
-    overlap = len(skills_lower & req_lower)
-    return overlap / len(req_lower)
+    return matched / total
 
 
 def _parse_reqs(job: Job) -> list[str]:
@@ -55,8 +93,13 @@ def score_single_job(db: Session, profile: UserProfile, job: Job) -> dict:
 
     system = _load_prompt()
     prompt = (
-        f"JOB REQUIREMENTS: {json.dumps(reqs)}\n"
         f"JOB TITLE: {job.title}\n"
+        f"JOB LOCATION: {job.location or 'Not specified'}\n"
+        f"JOB REMOTE TYPE: {job.remote_type or 'unknown'}\n"
+        f"JOB REQUIREMENTS: {json.dumps(reqs)}\n"
+        f"CANDIDATE LOCATION: {getattr(profile, 'location', '') or 'Not specified'}\n"
+        f"CANDIDATE PREFERRED LOCATIONS: {json.dumps(getattr(profile, 'preferred_locations', []) or [])}\n"
+        f"CANDIDATE REMOTE PREFERENCE: {getattr(profile, 'remote_preference', 'any') or 'any'}\n"
         f"CANDIDATE SKILLS: {json.dumps(profile.skills or [])}\n"
         f"CANDIDATE EXPERIENCE PREVIEW/SUMMARY: {profile.experience_summary or 'Not provided'}\n"
         f"CANDIDATE DETAILED EXPERIENCE:\n{json.dumps(profile.structured_cv.get('experience_details', []), indent=2)}"
@@ -116,12 +159,16 @@ def score_batch(db: Session, profile: UserProfile, jobs: list[Job]) -> list[dict
         for idx, job in enumerate(llm_batch):
             jobs_text += (
                 f"\nJOB {idx + 1}: {job.title} at {job.company}\n"
+                f"Location: {job.location or 'Not specified'} | Remote: {job.remote_type or 'unknown'}\n"
                 f"Requirements: {json.dumps(_parse_reqs(job))}\n"
             )
 
         prompt = (
             f"Score this candidate against {len(llm_batch)} jobs. "
-            f"Return JSON array of scores.\n"
+            f"Return JSON array of scores in the same order as the jobs below.\n"
+            f"CANDIDATE LOCATION: {getattr(profile, 'location', '') or 'Not specified'}\n"
+            f"CANDIDATE PREFERRED LOCATIONS: {json.dumps(getattr(profile, 'preferred_locations', []) or [])}\n"
+            f"CANDIDATE REMOTE PREFERENCE: {getattr(profile, 'remote_preference', 'any') or 'any'}\n"
             f"CANDIDATE SKILLS: {json.dumps(profile.skills or [])}\n"
             f"CANDIDATE EXPERIENCE SUMMARY: {profile.experience_summary or 'Not provided'}\n"
             f"CANDIDATE DETAILED EXPERIENCE:\n{json.dumps(profile.structured_cv.get('experience_details', []), indent=2)}\n"

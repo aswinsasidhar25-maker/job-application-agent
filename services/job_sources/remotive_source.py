@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import httpx
 from services.job_sources.base import JobSource, JobResult
+from services.location_matcher import location_matches
 
 
 class RemotiveSource(JobSource):
@@ -19,12 +20,19 @@ class RemotiveSource(JobSource):
         jobs = []
         for item in data.get("jobs", []):
             tags = item.get("tags", [])
+            job_location = item.get("candidate_required_location", "Worldwide") or "Worldwide"
+
+            # Remotive's API does not filter by location; apply our own matcher so
+            # that e.g. searching "India" does not return "USA only" listings.
+            if location and not location_matches(location, job_location):
+                continue
+
             jobs.append(JobResult(
                 external_id=str(item.get("id", "")),
                 source=self.name,
                 title=item.get("title", ""),
                 company=item.get("company_name", ""),
-                location=item.get("candidate_required_location", "Worldwide"),
+                location=job_location,
                 remote_type="remote",
                 description=item.get("description", ""),
                 url=item.get("url", ""),
