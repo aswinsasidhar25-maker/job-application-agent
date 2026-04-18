@@ -1,3 +1,4 @@
+import json
 import streamlit as st
 from database import SessionLocal, init_db
 from agents.orchestrator import get_profile, has_profile, has_cv, get_jobs, update_job_status
@@ -110,7 +111,10 @@ try:
                     st.markdown(f"**Score Analysis:** {job.score_explanation}")
 
                 if job.score_details:
-                    details = job.score_details if isinstance(job.score_details, dict) else {}
+                    try:
+                        details = json.loads(job.score_details) if isinstance(job.score_details, str) else job.score_details or {}
+                    except (json.JSONDecodeError, TypeError):
+                        details = {}
                     matches = details.get("matches", [])
                     gaps = details.get("gaps", [])
                     if matches:

@@ -17,14 +17,14 @@ class Job(Base):
     salary_max = Column(Float, nullable=True)
     description_raw = Column(Text, default="")
     description_summary = Column(Text, default="")
-    requirements = Column(JSON, default=list)
+    requirements = Column(Text, default="[]")
     url = Column(String(1000), default="")
     posted_date = Column(String(100), default="")
     discovered_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     status = Column(String(50), default="new")  # new/saved/applied/interviewing/rejected/dismissed
     cv_score = Column(Float, nullable=True)
     score_explanation = Column(Text, default="")
-    score_details = Column(JSON, default=dict)  # {matches: [], gaps: []}
+    score_details = Column(Text, default="{}")  # {matches: [], gaps: []}
     rewritten_cv_path = Column(String(500), default="")
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc),
