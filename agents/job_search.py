@@ -4,6 +4,7 @@ import asyncio
 import json
 import os
 import re
+import time
 from rapidfuzz import fuzz
 from sqlalchemy.orm import Session
 from services.llm_client import llm_call
@@ -113,7 +114,8 @@ def search_jobs(db: Session, profile: UserProfile, custom_query: str = "", custo
             # Clean description
             clean_desc = _strip_html(result.description)
 
-            # Summarize with mini model
+            # Summarize with mini model (4s delay keeps us under Gemini free tier 15 RPM)
+            time.sleep(4)
             summary_data = _summarize_job(db, clean_desc)
 
             job = Job(
