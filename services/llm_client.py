@@ -95,9 +95,16 @@ def llm_call(
         messages.append({"role": "system", "content": system})
     messages.append({"role": "user", "content": prompt})
 
+    is_ollama = model.startswith("ollama/")
     kwargs = {"model": model, "messages": messages, "temperature": 0.3}
-    if json_mode:
+    if is_ollama:
+        kwargs["api_base"] = settings.OLLAMA_BASE_URL
+    # Ollama models use format param, not response_format; only enable json_mode for cloud models
+    if json_mode and not is_ollama:
         kwargs["response_format"] = {"type": "json_object"}
+    elif json_mode and is_ollama:
+        # Ask the model to respond in JSON via the prompt instead
+        messages[-1]["content"] += "\n\nRespond with valid JSON only. No explanation."
 
     # Retry with exponential backoff for rate limit errors (Gemini free tier: 15 RPM)
     for attempt in range(4):
