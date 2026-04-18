@@ -58,7 +58,8 @@ def score_single_job(db: Session, profile: UserProfile, job: Job) -> dict:
         f"JOB REQUIREMENTS: {json.dumps(reqs)}\n"
         f"JOB TITLE: {job.title}\n"
         f"CANDIDATE SKILLS: {json.dumps(profile.skills or [])}\n"
-        f"CANDIDATE EXPERIENCE: {profile.experience_summary or 'Not provided'}"
+        f"CANDIDATE EXPERIENCE PREVIEW/SUMMARY: {profile.experience_summary or 'Not provided'}\n"
+        f"CANDIDATE DETAILED EXPERIENCE:\n{json.dumps(profile.structured_cv.get('experience_details', []), indent=2)}"
     )
 
     response = llm_call(db=db, prompt=prompt, task_type="score", system=system)
@@ -122,7 +123,8 @@ def score_batch(db: Session, profile: UserProfile, jobs: list[Job]) -> list[dict
             f"Score this candidate against {len(llm_batch)} jobs. "
             f"Return JSON array of scores.\n"
             f"CANDIDATE SKILLS: {json.dumps(profile.skills or [])}\n"
-            f"CANDIDATE EXPERIENCE: {profile.experience_summary or 'Not provided'}\n"
+            f"CANDIDATE EXPERIENCE SUMMARY: {profile.experience_summary or 'Not provided'}\n"
+            f"CANDIDATE DETAILED EXPERIENCE:\n{json.dumps(profile.structured_cv.get('experience_details', []), indent=2)}\n"
             f"{jobs_text}"
         )
 

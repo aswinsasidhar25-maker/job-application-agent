@@ -48,7 +48,7 @@ try:
             skills = cv_data.get("skills", [])
             st.write(", ".join(skills) if skills else "No skills detected")
         with st.expander("CV Preview", expanded=False):
-            st.text(cv_data["parsed_cv_text"][:2000])
+            st.text(cv_data["parsed_cv_text"])
     elif existing and existing.parsed_cv_text:
         cv_data = {
             "parsed_cv_text": existing.parsed_cv_text,

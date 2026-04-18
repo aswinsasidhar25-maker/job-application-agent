@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from config import settings
 from services.job_sources.base import JobSource, JobResult
 
 
@@ -19,7 +20,7 @@ class JobSpySource(JobSource):
                 site_name=["linkedin", "indeed", "glassdoor"],
                 search_term=query,
                 location=location or "Worldwide",
-                results_wanted=kwargs.get("num", 15),
+                results_wanted=kwargs.get("num", settings.JOBSPY_RESULTS_PER_SITE),
                 hours_old=72,
                 country_indeed="india" if "india" in (location or "").lower() else "usa",
             )

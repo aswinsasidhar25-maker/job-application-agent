@@ -1,2 +1,4 @@
 Extract structured profile from this CV. Return JSON only, no explanation.
-{"name":"","email":"","phone":"","location":"","most_recent_role":"","years_experience":0,"education_level":"","skills":["skill1"],"experience_summary":"2-3 sentences","suggested_roles":["role1","role2"]}
+Ensure "experience_summary" contains an actual 2-3 sentence summary of their work history and achievements.
+Extract all work history into "experience_details", providing exhaustive lists of accomplishments for each role.
+{"name":"","email":"","phone":"","location":"","most_recent_role":"","years_experience":0,"education_level":"","skills":["skill1"],"experience_summary":"","experience_details":[{"company":"","role":"","duration":"","achievements":["accomplishment 1","accomplishment 2"]}],"suggested_roles":["role1","role2"]}
