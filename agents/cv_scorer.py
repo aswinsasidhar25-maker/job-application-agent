@@ -44,7 +44,7 @@ def score_single_job(db: Session, profile: UserProfile, job: Job) -> dict:
         result = {
             "score": int(overlap * 100),
             "matches": [],
-            "gaps": job.requirements[:5],
+            "gaps": reqs[:5],
             "explanation": "Low keyword overlap - likely not a strong match.",
         }
         job.cv_score = result["score"]
@@ -92,7 +92,7 @@ def score_batch(db: Session, profile: UserProfile, jobs: list[Job]) -> list[dict
                 result = {
                     "score": int(overlap * 100),
                     "matches": [],
-                    "gaps": job.requirements[:5],
+                    "gaps": reqs[:5],
                     "explanation": "Low keyword overlap.",
                 }
                 job.cv_score = result["score"]
@@ -115,7 +115,7 @@ def score_batch(db: Session, profile: UserProfile, jobs: list[Job]) -> list[dict
         for idx, job in enumerate(llm_batch):
             jobs_text += (
                 f"\nJOB {idx + 1}: {job.title} at {job.company}\n"
-                f"Requirements: {json.dumps(job.requirements or [])}\n"
+                f"Requirements: {json.dumps(_parse_reqs(job))}\n"
             )
 
         prompt = (

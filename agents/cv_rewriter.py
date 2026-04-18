@@ -20,7 +20,7 @@ def rewrite_cv_for_job(db: Session, profile: UserProfile, job: Job) -> str:
         f"TARGET JOB:\n"
         f"Title: {job.title}\n"
         f"Company: {job.company}\n"
-        f"Key Requirements: {json.dumps(job.requirements or [])}\n\n"
+        f"Key Requirements: {job.requirements if isinstance(job.requirements, str) else json.dumps(job.requirements or [])}\n\n"
         f"CURRENT CV:\n{profile.parsed_cv_text[:4000]}"
     )
 
