@@ -32,7 +32,7 @@ COUNTRY_ALIASES: dict[str, set[str]] = {
         "cambridge", "oxford", "leeds",
     },
     "canada": {
-        "canada", "ca", "toronto", "vancouver", "montreal", "ottawa", "calgary",
+        "canada", "toronto", "vancouver", "montreal", "ottawa", "calgary",
         "edmonton", "waterloo",
     },
     "germany": {
@@ -100,13 +100,18 @@ def location_matches(user_location: str, job_location: str, remote_preference: s
     job_norm = _normalize(job_location)
     user_norm = _normalize(user_location)
 
+    user_country = _country_of(user_location)
+    job_country = _country_of(job_location)
+
     if is_remote_location(job_location):
         if remote_preference == "onsite":
             return False
+        # If the user pinned a country, a remote job must share that country
+        # (or carry no country at all). This blocks worldwide-remote roles
+        # like "Lyft - Remote, US" leaking into a Bangalore search.
+        if user_country and job_country and user_country != job_country:
+            return False
         return True
-
-    user_country = _country_of(user_location)
-    job_country = _country_of(job_location)
 
     if user_country and job_country:
         return user_country == job_country
